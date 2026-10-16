@@ -80,6 +80,8 @@ A couple of other things I had to fix along the way: Qt re-parses a stylesheet e
 | M5Stack Core2 | 50.00 |
 | **Per unit** | **≈62.50** |
 
+Full BOM with quantities and supplier links: [`BOM/ChromaSense_BOM_v2.xlsx`](BOM/ChromaSense_BOM_v2.xlsx).
+
 For comparison, a [Sekonic C-800](https://galaxus.at/en/s1/product/sekonic-c-800-spectromaster-flash-unit-battery-flash-accessories-11488106) is €1,470, and a [Konica Minolta CL-200A](https://store.imatest.com/minolta-cl-200a-chroma-meter.html) is $6,500. To be clear, I'm not claiming this matches either — the C-800 is a real spectrometer with traceable calibration across the visible range, and this is one calibrated tristimulus sensor. What it does show is that you can get usable CIE coordinates for a small fraction of the cost if you're willing to build it yourself.
 
 ## What it doesn't do yet
