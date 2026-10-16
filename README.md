@@ -45,8 +45,11 @@ The TCS3530 runs on 1.8 V and comes in a 2.5 × 1.8 mm LGA package — you can't
 |-----|------|-----|
 | U1 | TCS35303-2M | the sensor |
 | U2 | AP2112K-1.8TRG1 | 1.8 V LDO for the sensor |
-| C1–C4 | 4.7 µF / 1 µF 0402 MLCC | decoupling |
+| C4 | 1 µF 0402 MLCC | LDO input, 5 V side |
+| C1, C2, C3 | 4.7 µF + 2 × 100 nF 0402 MLCC | 1.8 V rail: LDO output and sensor decoupling |
 | J1 | Grove HY2.0-4P | I²C to the Core2 |
+
+Full schematic: [`hardware/ChromaSense_Breakout_schematic.pdf`](hardware/ChromaSense_Breakout_schematic.pdf). There are no I²C pull-ups on the board, because the Core2's Grove port already provides them.
 
 2-layer, DRC clean, fabbed at JLCPCB. I built three, and all three brought up and behaved identically — which turned out to matter later (see the Z-channel story).
 
@@ -140,12 +143,12 @@ A typical packet:
 |---|---|
 | TCS35303-2M | 8.50 |
 | AP2112K-1.8TRG1 | 0.45 |
-| Decoupling caps ×4 | 0.20 |
+| Decoupling caps ×4 | 0.11 |
 | Grove connector | 0.35 |
 | PCB (JLCPCB, 5 off, shipped) | ≈3.00 |
-| **Breakout total** | **≈12.50** |
+| **Breakout total** | **≈12.40** |
 | M5Stack Core2 | 50.00 |
-| **Per unit** | **≈62.50** |
+| **Per unit** | **≈62.40** |
 
 Full BOM with quantities and supplier links: [`BOM/ChromaSense_BOM_v2.xlsx`](BOM/ChromaSense_BOM_v2.xlsx).
 

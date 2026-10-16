@@ -7,3 +7,10 @@ __pycache__/
 # local session data
 python-gui/logs/
 *.csv.bak
+
+# KiCad local files
+*.kicad_prl
+*-backups/
+fp-info-cache
+.history/
+*.lck
