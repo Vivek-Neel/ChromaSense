@@ -14,7 +14,7 @@ Measures illuminance (lux), correlated colour temperature (CCT via McCamy's appr
 | Board | 2-layer breakout I designed in KiCad, 25 × 30 mm |
 | MCU | M5Stack Core2 (ESP32), I²C @ 400 kHz |
 | Link | Bluetooth SPP, JSON @ 10 Hz |
-| GUI | PyQt5, CIE diagram computed from the actual colour-matching functions (not a background image) |
+| GUI | PyQt5, live CIE 1931 diagram |
 
 ## Why there's a custom PCB at all
 
