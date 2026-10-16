@@ -1,0 +1,13 @@
+cie_background.jpg
+
+Adapted from "CIE-1931 diagram in LAB space.svg" by Fuzzypeg (English
+Wikipedia), itself derived from a work by Paulschou.
+
+Source:  https://commons.wikimedia.org/wiki/File:CIE-1931_diagram_in_LAB_space.svg
+Licence: Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
+         https://creativecommons.org/licenses/by-sa/3.0/
+
+Changes: converted to a 1200 x 1200 px JPEG for use as a plot background.
+
+This image is not covered by the repository's MIT licence. This adapted
+version is distributed under CC BY-SA 3.0.

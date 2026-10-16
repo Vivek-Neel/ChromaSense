@@ -188,6 +188,20 @@ python main_window.py
 ```
 Pair the Core2 over Bluetooth, pick the right COM port in the dropdown, connect. Windows creates two Bluetooth COM ports when you pair; only one of them works.
 
+## Licence
+
+- **Code, docs, photos and BOM:** MIT — see [`LICENSE`](LICENSE).
+- **Hardware design files** in `hardware/`: CERN Open Hardware Licence v2, Permissive — see [`hardware/LICENSE`](hardware/LICENSE).
+
+Not covered by either:
+
+- **`python-gui/cie_background.jpg`** is adapted from [*CIE-1931 diagram in LAB space*](https://commons.wikimedia.org/wiki/File:CIE-1931_diagram_in_LAB_space.svg) by Fuzzypeg, under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Details next to the file.
+- **`python-gui/oth_logo.jpg`** is OTH Regensburg's logo, used to identify the institution. All rights remain with OTH Regensburg.
+- **The calibration constants** in `firmware/src/main.cpp` are ams-OSRAM's per-sensor factory data, included with permission for this project. They aren't mine to license.
+- ams-OSRAM, M5Stack and other product names are trademarks of their owners.
+
+The GUI depends on PyQt5, which is GPL v3. That doesn't affect the licence of this source, but a bundled, distributed build of the GUI would fall under GPL terms.
+
 ---
 
 M.Eng. Electrical and Microsystems Engineering, OTH Regensburg, Faculty ANK. Supervised by Prof. Johannes Wild. Graded 1.0.
