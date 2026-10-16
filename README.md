@@ -1,217 +1,128 @@
 # ChromaSense
 
-**A wireless colorimeter built from the datasheet up — custom PCB, custom sensor driver, factory-calibrated colour pipeline, and a live CIE 1931 dashboard — for about 1–4% of the cost of a commercial instrument.**
+A wireless colorimeter I built for my M.Eng. project: a custom PCB around the TCS3530 colour sensor, an ESP32 that reads it and does the colour-science math, and a Python GUI that plots the result live on a CIE 1931 diagram. Parts cost works out to around €62 — commercial instruments that do roughly the same job run €1,500 to €6,000+.
 
 ![ChromaSense device showing live illuminance, CCT and CIE chromaticity readings next to the custom breakout board](assets/hero.jpg)
 
----
+## What it does
 
-## What this project proves
-
-- **I can take a sensor from datasheet to working instrument.** TCS3530 → custom KiCad breakout → ESP32 firmware → calibrated colour values → wireless GUI. No module, no example sketch.
-- **I write my own driver when the vendor library is wrong.** The off-the-shelf library had three separate faults that combined to produce plausible-looking garbage. I diagnosed each one and wrote a replacement from the datasheet. ([Full write-up below.](#the-bug-that-mattered-a-driver-that-looked-fine-and-wasnt))
-- **I apply real metrological calibration, not a fudge factor.** Per-sensor ams-OSRAM factory calibration: integration-time normalisation → per-channel gain normalisation → 3×4 correction matrix.
-- **I state my limitations.** Lux scale factor is uncharacterised; narrow-band sources fall outside the calibrated range. [Both documented.](#limitations)
-
-## At a glance
+Measures illuminance (lux), correlated colour temperature (CCT via McCamy's approximation), and CIE 1931 *xy* chromaticity, all live, streamed over Bluetooth to a desktop GUI at 10 Hz.
 
 | | |
 |---|---|
-| **Measures** | Illuminance (lux), CCT (McCamy), CIE 1931 *xy* chromaticity |
-| **Sensor** | ams-OSRAM TCS35303-2M XYZ tristimulus, 24-bit channel data |
-| **Board** | Custom 2-layer breakout, 25 × 30 mm, KiCad → JLCPCB, DRC clean |
-| **MCU** | M5Stack Core2 (ESP32), I²C @ 400 kHz |
-| **Link** | Bluetooth SPP, JSON telemetry @ 10 Hz |
-| **GUI** | Python / PyQt5, CIE 1931 diagram computed from CIE colour-matching functions, CSV logging |
-| **Cost** | **≈ €62 per unit** vs €1,470–6,000 for commercial meters |
+| Sensor | ams-OSRAM TCS35303-2M, 24-bit XYZ tristimulus |
+| Board | 2-layer breakout I designed in KiCad, 25 × 30 mm |
+| MCU | M5Stack Core2 (ESP32), I²C @ 400 kHz |
+| Link | Bluetooth SPP, JSON @ 10 Hz |
+| GUI | PyQt5, CIE diagram computed from the actual colour-matching functions (not a background image) |
 
----
+## Why there's a custom PCB at all
 
-## Architecture
-
-```
-  ┌──────────────────────┐
-  │  TCS35303-2M         │  XYZ tristimulus sensor
-  │  (ChromaSense        │  1.8 V via AP2112K LDO
-  │   Breakout v1.1)     │
-  └──────────┬───────────┘
-             │  I²C  @ 400 kHz   (SDA 32 / SCL 33, Grove HY2.0-4P)
-             ▼
-  ┌──────────────────────┐
-  │  M5Stack Core2       │  ESP32 · AXP2101 PMIC · IPS LCD
-  │                      │
-  │  ChromaSense_TCS3530 │  custom 24-bit driver
-  │          ↓           │
-  │  factory calibration │  ATIME norm → AGAIN norm → 3×4 matrix
-  │          ↓           │
-  │  lux · CCT · x,y     │  photopic weighting · McCamy
-  └──────────┬───────────┘
-             │  Bluetooth SPP — JSON @ 10 Hz
-             │  {lux, cct, x, y, X, Y, Z, mode, batt, dark}
-             ▼
-  ┌──────────────────────┐
-  │  Python GUI (PyQt5)  │  live CIE 1931 diagram · CSV logging
-  └──────────────────────┘
-```
-
----
-
-## Hardware
+The TCS3530 runs on 1.8 V and comes in an OLGA package — you can't just dead-bug it onto a 3.3 V dev board. So the breakout carries the sensor, its own LDO, decoupling caps, and a Grove connector that plugs straight into the Core2's I²C port.
 
 <img src="assets/pcb-photo.jpg" width="45%" alt="Assembled ChromaSense Breakout v1.1"> <img src="assets/pcb-layout.png" width="45%" alt="KiCad PCB layout">
 
-The breakout exists because the TCS3530 ships in an OLGA package with a 1.8 V supply rail — it cannot be wired to a 3.3 V dev board directly. The board carries the sensor, its own LDO, decoupling, and a Grove connector so it drops straight onto the Core2's I²C port.
+| Ref | Part | Why |
+|-----|------|-----|
+| U1 | TCS35303-2M | the sensor |
+| U2 | AP2112K-1.8TRG1 | 1.8 V LDO for the sensor |
+| C1–C4 | 4.7 µF / 1 µF 0402 MLCC | decoupling |
+| J1 | Grove HY2.0-4P | I²C to the Core2 |
 
-| Ref | Component | Part | Purpose |
-|-----|-----------|------|---------|
-| U1 | XYZ tristimulus sensor | TCS35303-2M | Ambient light / colour measurement |
-| U2 | LDO regulator | AP2112K-1.8TRG1 | 1.8 V sensor supply (SOT-23-5) |
-| C1–C4 | MLCC 0402 | 4.7 µF / 1 µF, X5R, 10 V | LDO and sensor decoupling |
-| J1 | Connector | Grove HY2.0-4P | I²C to M5Stack Core2 |
-
-**PCB:** 2-layer, 25 × 30 mm · power traces 0.3 mm / signal traces 0.15 mm · GND copper pour on B.Cu · DRC 0 errors · fabricated at JLCPCB.
-
-Optical design follows the ams-OSRAM TCS3530 Optical Design Guide: 3.12 mm aperture, 0.20 ± 0.15 mm air gap.
-
----
+2-layer, DRC clean, fabbed at JLCPCB. Optical stack follows ams-OSRAM's design guide: 3.12 mm aperture, 0.20 ± 0.15 mm air gap above the die.
 
 ## Firmware
 
-PlatformIO · `espressif32@6.13.0` · board `m5stack-core2` · M5Unified.
+PlatformIO, ESP32, M5Unified. The sensor driver (`firmware/lib/ChromaSense_TCS3530`) is mine, written against the datasheet — more on why below.
 
-**Custom driver — `firmware/lib/ChromaSense_TCS3530`.** Written from the TCS3530 datasheet (DS001080 v3-00) after the available vendor library proved unusable for this application (see below). Handles oscillator bring-up, 24-bit FIFO configuration, gain and integration-time control, and FIFO overflow/underflow recovery. Every register reference in the header is cited to a datasheet page number.
+Readings go through ams-OSRAM's factory calibration for this specific sensor: normalise for integration time, normalise per-channel gain to a common reference, then a 3×4 matrix that maps raw counts to CIE XYZ. From there it's arithmetic — x = X/(X+Y+Z), y = Y/(X+Y+Z), McCamy's cubic for CCT, photopic-weighted Y for lux.
 
-**Calibration pipeline.** Per-sensor ams-OSRAM factory calibration, applied in three stages:
+The calibration numbers for this sensor (serial 557D0C06B8) are in `main.cpp` as plain constants. My supervisor's fine with that — what's not in here is ams-OSRAM's calibration file, their documentation, or their driver. Just the numbers I ended up using.
 
-1. **ATIME normalisation** — scale raw counts from the factory reference integration time (20 ms) to the operating setting.
-2. **AGAIN normalisation** — per-channel gain correction to a 128× reference, using the `GCORR` coefficients measured at 0.5× / 2× / 16×.
-3. **Matrix correction** — 3×4 `CAL_A` matrix mapping corrected sensor counts to CIE XYZ.
+Also in there: an on-device dashboard on the Core2's screen, battery monitoring, and a dark-mode toggle (long-press a button, or send a command from the GUI) that kills the backlight for low-light readings without touching the sensor bus.
 
-From XYZ: chromaticity `x = X/(X+Y+Z)`, `y = Y/(X+Y+Z)`; CCT via the McCamy cubic approximation; illuminance from the photopic-weighted Y channel.
+## The bug that ate a week
 
-> The calibration coefficients for this specific sensor (UID `557D0C06B8`) are included in `firmware/src/main.cpp`, with my supervisor's agreement — published here only as applied numeric values in source, never as the vendor's calibration file, documentation, or driver, none of which are redistributed in this repository.
+First pass, I used a library someone else had written for a TCS3530-adjacent board. Every reading came back near zero no matter how bright the light was, and changing the gain setting in code did nothing. No errors anywhere — it just didn't work, and nothing told me why.
 
-**Also implemented:** on-device dashboard on the Core2 IPS LCD, battery monitoring via AXP2101, and a dark mode (3-second button hold or a `DARK`/`LIGHT` command from the GUI) that blanks the backlight for low-light measurement without touching the I²C bus — firmware state is echoed in every JSON packet so the GUI stays in sync regardless of which side triggered it.
+Took a while to realise it was actually three bugs stacked on top of each other:
 
----
+1. The library wrote the gain and integration-time settings to the wrong register addresses. The integration-time one mattered most — with it never actually set, the sensor was integrating for basically no time at all, so of course everything read near zero. This is the one that made it *look* like a hardware fault.
+2. Even once that's fixed, the library only read 16 bits of what's a 24-bit value per channel. It'll still give you numbers — just truncated, wrong ones that look fine at a glance.
+3. The FIFO frame size isn't fixed — it depends on exactly which channels and status bytes you've configured it to write. The library assumed a layout that didn't match my config, which misaligns every read after the first.
 
-## Python GUI
+And one more thing that cost me a morning during bring-up: you have to enable and confirm the oscillator before most registers are even readable, but the device-ID register works regardless. So the obvious "is it alive?" check — read the ID, see if it matches — passes even when the sensor is completely unresponsive to everything else. Learned that one the hard way.
+
+Once I understood what was actually wrong, writing a driver from the datasheet directly was faster than debugging someone else's. Correct addresses, explicit 24-bit FIFO mode, frame handling that matches my actual config, and a proper oscillator-ready wait before touching anything. After that the gain and integration-time settings behaved, and the calibration numbers finally meant something.
+
+The real lesson: code that compiles and spits out plausible numbers can still be completely wrong. A reading that doesn't move when it should is a better signal than one that just looks off. And the cheapest sanity check I had — pinging the ID register — was the one giving me a false "yes, it's working."
+
+## The GUI
 
 ![ChromaSense PyQt5 dashboard with live CIE 1931 chromaticity diagram](assets/gui-dashboard.png)
 
-PyQt5 dashboard: CIE 1931 chromaticity diagram with a live position marker, telemetry panels for illuminance, CCT, chromaticity, raw channel counts and battery, plus CSV logging for measurement sessions.
+PyQt5 app, live chromaticity plot with telemetry panels for lux, CCT, raw channel counts, and battery, plus CSV logging.
 
-**The chromaticity diagram is computed, not an image.** The spectral locus is rendered from the CIE 1931 colour-matching functions via `scipy.interpolate.CubicSpline` at 0.1 nm steps — `np.interp` is piecewise-linear and visibly facets the curve at the green apex, so a proper spline was needed. The gamut fill inside the locus is computed per-pixel from an XYZ → linear-sRGB transform (IEC 61966-2-1) with correct gamma companding, not a pre-rendered picture. The result is self-contained: no third-party chart image, no licensing question.
+The diagram itself isn't a picture — the spectral locus is a cubic spline through the actual CIE colour-matching function data (plain linear interpolation visibly facets the curve near the green corner), and the gamut fill is computed per-pixel through an XYZ→sRGB conversion with proper gamma correction. No downloaded chart image, which also sidesteps any question of whose picture it was.
 
-Other implementation notes worth the trouble:
-
-- **10 Hz without stutter.** Qt re-parses a stylesheet on every `setStyleSheet` call. The CCT and battery labels use colour gradients, so naive updates re-parsed twice per packet. Caching the last applied colour and skipping no-op updates removes it.
-- **Serial I/O off the UI thread.** `bt_worker.py` runs the Bluetooth link in a `QThread` with a `send()` method for outbound commands.
-
----
-
-## The bug that mattered: a driver that looked fine and wasn't
-
-**Symptom.** With the first library I tried, every channel read close to zero regardless of light level, and changing the gain setting in software had no visible effect on the output.
-
-**Why it was hard.** Nothing errored. The sensor acknowledged on I²C, the ID register read back correctly, and the output was a plausible — if suspiciously flat — stream of numbers. There was no exception to catch, only values that didn't respond the way they should have.
-
-**Root cause — three separate faults in the library:**
-
-1. **Wrong register addresses.** Gain was written to the wrong address, and the ALS sample-count register (`0x87`/`0x88`, 11-bit, sets the integration time) was also wrong. With the sample count never actually set, integration time stayed near zero and every channel read close to nothing — the dominant symptom, and the one that made the bug look like a wiring or power problem rather than a software one.
-2. **16-bit truncation of 24-bit data.** The TCS3530's FIFO can be configured for 16, 24 or 32-bit channel width (`CFG4`) with the MSB alignment set separately (`ALS_MSB_POSITION`). Left at their reset defaults, the driver silently read only the top 16 bits of a 24-bit value — a loss of dynamic range that produces numbers which still look like data, not an error.
-3. **Frame width depends on configuration, and the library assumed the wrong one.** The FIFO's frame size isn't fixed — it depends on which channels are write-enabled and whether ALS-status and gain bytes are included. My configuration (four channels, status/gain writes disabled) gives a 12-byte frame; the layout the library assumed corresponds to a different configuration. Getting this wrong misaligns every subsequent read, compounding the error with each frame.
-
-**A fourth trap, during bring-up.** The oscillator enable bit (`OSCEN`, register `0x7F`) must be set and confirmed before any *clocked* register access works. But the device ID register is unclocked — it reads back correctly even with the oscillator off. The standard "is the sensor alive?" check gives a confident false positive while every other register is still inaccessible.
-
-**Resolution.** I wrote `ChromaSense_TCS3530` from the datasheet: correct register addresses verified against datasheet page references, explicit 24-bit FIFO configuration, frame handling matched to my actual channel configuration, and an oscillator-ready wait before touching anything clocked. Gain and integration time then behaved as specified, and the factory calibration could be applied meaningfully — it cannot be, on truncated or misaligned data.
-
-**What I took from it.** A library that compiles, enumerates, and returns believable numbers can still be wrong in every way that matters. A reading that should change and doesn't is a stronger signal than one that looks wrong. And the cheapest sanity check available — reading the ID register — was the one that gave a false pass.
-
----
+A couple of other things I had to fix along the way: Qt re-parses a stylesheet every time you call `setStyleSheet`, and at 10 Hz with colour-graded labels that adds up — caching the last colour and skipping no-op updates fixed the stutter. And the Bluetooth read loop runs on its own `QThread` so it doesn't block the UI.
 
 ## Cost
 
-Per working unit, at the single-unit prices paid:
+| | € |
+|---|---|
+| TCS35303-2M | 8.50 |
+| AP2112K-1.8TRG1 | 0.45 |
+| Decoupling caps ×4 | 0.20 |
+| Grove connector | 0.35 |
+| PCB (JLCPCB, 5 off, shipped) | ≈3.00 |
+| **Breakout total** | **≈12.50** |
+| M5Stack Core2 | 50.00 |
+| **Per unit** | **≈62.50** |
 
-| Item | € |
-|------|---|
-| TCS35303-2M sensor | 8.50 |
-| AP2112K-1.8TRG1 LDO | 0.45 |
-| MLCC decoupling, 0402 (×4) | 0.20 |
-| Grove HY2.0-4P connector | 0.35 |
-| PCB, 2-layer (JLCPCB, 5-off, incl. shipping) | ≈ 3.00 |
-| **Breakout subtotal** | **≈ 12.50** |
-| M5Stack Core2 (ESP32 platform) | 50.00 |
-| **Total per unit** | **≈ 62.50** |
+For comparison, a [Sekonic C-800](https://galaxus.at/en/s1/product/sekonic-c-800-spectromaster-flash-unit-battery-flash-accessories-11488106) is €1,470, and a [Konica Minolta CL-200A](https://store.imatest.com/minolta-cl-200a-chroma-meter.html) is $6,500. To be clear, I'm not claiming this matches either — the C-800 is a real spectrometer with traceable calibration across the visible range, and this is one calibrated tristimulus sensor. What it does show is that you can get usable CIE coordinates for a small fraction of the cost if you're willing to build it yourself.
 
-For comparison:
+## What it doesn't do yet
 
-| Instrument | Price |
-|------------|-------|
-| [Sekonic C-800 SpectroMaster](https://galaxus.at/en/s1/product/sekonic-c-800-spectromaster-flash-unit-battery-flash-accessories-11488106) | €1,470 incl. VAT |
-| [Konica Minolta CL-200A Chroma Meter](https://store.imatest.com/minolta-cl-200a-chroma-meter.html) | $6,500 |
+- The lux output hasn't been checked against a reference meter, so treat absolute values as provisional — relative readings are fine.
+- The sensor's Z channel is UV-sensitive enough (Z/Y swings from ~0.49 in direct sun to ~8.2 under open sky) that narrow-band sources like monitor primaries fall outside what the calibration was fitted for.
+- There's no enclosure. The 3D-printed housing got cut for time, so right now it's a bare board and stray light is whatever it is.
+- The calibration is for one specific sensor (557D0C06B8). A different unit needs its own factory numbers from ams-OSRAM.
 
-**This is not a claim of equivalence.** A C-800 is a 380–780 nm spectrometer with traceable calibration; ChromaSense is a tristimulus sensor with a per-device factory correction. What the comparison shows is that factory-calibrated tristimulus sensing puts usable CIE coordinates within reach at roughly 1–4% of instrument cost — which is the interesting engineering result, not a replacement for a reference meter.
-
----
-
-## Limitations
-
-Stated plainly, because they bound what the measurements mean:
-
-- **Illuminance scale factor is uncharacterised.** The lux output has not yet been characterised against a reference lux meter with the optical stack installed. Relative readings are consistent; absolute readings are provisional.
-- **Narrow-band sources fall outside the calibrated range.** The TCS3530's Z channel carries significant UV sensitivity — Z/Y ≈ 8.2 under diffuse sky versus ≈ 0.49 under direct sun. Monitor primaries and narrow-band LEDs sit outside the conditions the factory matrix was fitted for, and chromaticity for those sources should be treated as indicative.
-- **No enclosure.** A 3D-printed housing was descoped for schedule reasons. Measurements are taken with the bare board, so stray light is uncontrolled.
-- **Single-unit calibration.** The calibration in this repository is specific to one sensor (UID `557D0C06B8`). Another sensor requires its own factory calibration from ams-OSRAM.
-
----
-
-## Repository structure
+## Layout
 
 ```
 chromasense/
-├── hardware/            KiCad project — schematic, layout, Gerbers,
-│                        custom symbol and footprint libraries, STEP model
-├── firmware/            PlatformIO project (ESP32)
+├── hardware/     KiCad project, Gerbers, footprints, STEP model
+├── firmware/     PlatformIO project
 │   ├── src/main.cpp
-│   └── lib/ChromaSense_TCS3530/     custom sensor driver
-├── python-gui/          PyQt5 dashboard
-│   ├── main_window.py
-│   ├── cie_widget.py
-│   └── bt_worker.py
-├── assets/              photographs and screenshots
+│   └── lib/ChromaSense_TCS3530/   the driver
+├── python-gui/   main_window.py, cie_widget.py, bt_worker.py
+├── assets/
 └── requirements.txt
 ```
 
-## Build
+## Running it
 
-**Firmware**
-
+Firmware:
 ```bash
 cd firmware
 pio run --target upload
 ```
+Calibration for sensor 557D0C06B8 is already in `src/main.cpp`. Swap in your own sensor's numbers from ams-OSRAM if you're using a different unit.
 
-Sensor calibration for UID `557D0C06B8` is already applied in `src/main.cpp`. Using a different TCS3530 requires its own factory calibration data from ams-OSRAM, substituted into the same constants.
-
-**GUI**
-
+GUI:
 ```bash
 cd python-gui
 pip install -r ../requirements.txt
 python main_window.py
 ```
-
-Pair the Core2 over Bluetooth, select the SPP serial port in the GUI, and connect.
+Pair the Core2 over Bluetooth, pick the right COM port in the dropdown, connect.
 
 ---
 
-## Context
-
-M.Eng. project, Electrical and Microsystems Engineering — **OTH Regensburg**, Faculty ANK, Summer Semester 2026.
-Supervisor: Prof. Johannes Wild.
+M.Eng. Electrical and Microsystems Engineering, OTH Regensburg, Faculty ANK. Supervised by Prof. Johannes Wild.
 
 **Vivek Wilson Neelamkavil** · [LinkedIn](#) · [CV](#)
 
-The TCS3530 is referenced throughout against its public datasheet (ams-OSRAM DS001080 v3-00); no ams-OSRAM documentation, software, or raw calibration data is redistributed in this repository.
+TCS3530 references throughout are to the public datasheet (ams-OSRAM DS001080 v3-00). No ams-OSRAM documentation, software, or raw calibration files are included here.
