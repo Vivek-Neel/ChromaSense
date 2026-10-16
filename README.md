@@ -18,6 +18,10 @@ Measures illuminance (lux), correlated colour temperature (CCT via McCamy's appr
 | Link | Bluetooth SPP, JSON @ 10 Hz, commands back the other way |
 | GUI | PyQt5, live CIE 1931 diagram |
 
+Here it is live. The red dot is the measured chromaticity, moving between a warm source (~3,000 K) and a cool one (~11,000 K):
+
+![Live demo: the measured point moves across the CIE 1931 diagram as the light source changes between warm and cool](assets/demo.gif)
+
 ## How well it works
 
 CCT checked against what standard illuminants say each scene should read. These numbers come from the field-calibration stage and were re-checked on the same scenes after the factory calibration went in:
@@ -206,6 +210,6 @@ The GUI depends on PyQt5, which is GPL v3. That doesn't affect the licence of th
 
 M.Eng. Electrical and Microsystems Engineering, OTH Regensburg, Faculty ANK. Supervised by Prof. Johannes Wild. Graded 1.0.
 
-**Vivek Wilson Neelamkavil** · [LinkedIn](#) · [CV](#)
+**Vivek Wilson Neelamkavil** · [LinkedIn](https://www.linkedin.com/in/vivek-wilson/)
 
 TCS3530 references throughout are to the public datasheet (ams-OSRAM DS001080 v3-00). No ams-OSRAM documentation, software, or raw calibration files are included here.
