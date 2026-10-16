@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "ChromaSense_lib") (type "KiCad") (uri "${KIPRJMOD}/lib/symbols/2026-03-29_00-20-13.kicad_sym") (options "") (descr ""))
+)

@@ -1,0 +1,14 @@
+{
+  "name": "ChromaSense_TCS3530",
+  "version": "1.0.0",
+  "description": "I2C driver for the AMS OSRAM TCS3530 XYZ tristimulus sensor. 24-bit FIFO reads, correct gain and integration register addresses, 12-byte frame decode, FIFO overflow recovery, and 24-bit sentinel saturation detection.",
+  "keywords": "tcs3530, color sensor, xyz, i2c, ams-osram, chromasense",
+  "authors": [
+    {
+      "name": "Vivek Wilson Neelamkavil",
+      "maintainer": true
+    }
+  ],
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}
